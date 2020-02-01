@@ -4,7 +4,8 @@ import { rgb } from 'd3';
 
 export const hashToHexColor = hashColor => hashColor.replace('#', '0x');
 
-export const rgbToPixiColor = ({ r, g, b }) => Math.floor((r << 16) + (g << 8) + b);
+export const rgbToPixiColor = ({ r, g, b }) =>
+  Math.floor((r << 16) + (g << 8) + b);
 
 export const hexToPixiColor = color => {
   const { r, g, b } = rgb(color);
@@ -12,12 +13,14 @@ export const hexToPixiColor = color => {
 };
 
 export const circleGraphic = ({
-  radius,
-  fill,
+  radius = 1,
+  fill = 0xffffff,
   strokeWidth,
   strokeColor,
   parent,
   blendMode,
+  x = 0,
+  y = 0,
 }) => {
   const s = new PIXI.Graphics();
   if (strokeWidth != null) {
@@ -32,6 +35,7 @@ export const circleGraphic = ({
   }
   if (blendMode) s.blendMode = blendMode;
   if (parent) parent.addChild(s);
-
+  s.x = x;
+  s.y = y;
   return s;
 };

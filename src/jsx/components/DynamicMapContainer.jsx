@@ -2,7 +2,7 @@ import React from 'react';
 import { observer } from 'mobx-react';
 import { autorun, observable, computed, extendObservable, action } from 'mobx';
 import { now } from 'mobx-utils';
-import { random, range, memoize, keyBy } from 'lodash';
+import { random, range, memoize, keyBy, orderBy } from 'lodash';
 import {
   interpolateMagma,
   scaleLinear,
@@ -12,6 +12,8 @@ import {
   forceX,
   forceY,
   forceManyBody,
+  extent,
+  max,
 } from 'd3';
 
 // import DynamicMap from './DynamicMapThree';
@@ -19,14 +21,37 @@ import {
 import DynamicMap from './DynamicMapPixiFiber';
 // import DynamicMap from './DynamicMapHtml';
 // import DynamicMap from './DynamicMapSVG';
+import DynamicMapLabels from './DynamicMapLabels';
 import dataAPI from '../data/dataAPI';
-import StationsAndConnectionsView from './StationsAndConnectionsView';
+import uiState from '../state/uiState';
+// import StationsAndConnectionsView from './StationsAndConnectionsView';
 
 @observer
 class DynamicMapContainer extends React.Component {
   data = [];
 
-  displayItems = [];
+  @observable.shallow displayItems = [];
+
+  @observable hoveredItemId = null;
+  @computed get hoveredItem() {
+    return this.displayItems.find(d => d.id === this.hoveredItemId);
+  }
+  @computed get displayItemsWithLabels() {
+    return this.hoveredItemId
+      ? this.displayItems.filter(d => d.id === this.hoveredItemId).slice()
+      : [];
+    // : orderBy(this.displayItems, 'target.radius')
+    //     .reverse()
+    //     .slice(0, 5);
+  }
+
+  @action.bound clickAction(id) {}
+
+  @action.bound hoverAction(id) {
+    this.hoveredItemId = id;
+  }
+
+  @observable frame = 0;
 
   createDisplayItem = o => ({
     data: o,
@@ -35,20 +60,26 @@ class DynamicMapContainer extends React.Component {
     y: 0,
     radius: 5,
     trail: [],
-    color: '#FFFFFF',
+    color: o.color,
+    labelVisible: false,
     target: { x: 960, y: 540, radius: 1 },
   });
 
   layout = {};
 
-  radiusExtent = [3, 12];
+  radiusExtent = [3, 20];
 
   strengthScale = scaleLinear()
     .domain(this.radiusExtent)
     .range([0.03, 0.07])
     .clamp(true);
 
+  xScale = scaleLinear();
+  yScale = scaleLinear();
+  radiusScale = scaleLinear().range(this.radiusExtent);
+
   tick(now) {
+    this.frame = now;
     this.displayItems.forEach(d => {
       d.radius = d.target.radius;
     });
@@ -62,48 +93,87 @@ class DynamicMapContainer extends React.Component {
 
   refreshLayout() {
     console.log('refreshLayout');
+    const { data, children, width, height } = this.props;
+    let x, y, r;
 
-    this.layoutCounter++;
-    switch (this.layoutCounter) {
-      case 1:
+    const padding = 100;
+    const W = Math.min(width, height) - padding * 2;
+    const X_OFF = (width - W - padding * 2) / 2 + padding;
+    const Y_OFF = (height - W - padding * 2) / 2 + padding;
+
+    switch (uiState.mode) {
+      case 'similarity':
+        x = d => d.data.x;
+        y = d => d.data.y;
+        r = d => d.data.time;
+
+        this.xScale
+          .domain(extent(this.displayItems, x))
+          .range([X_OFF, X_OFF + W]);
+
+        this.yScale
+          .domain(extent(this.displayItems, y))
+          .range([Y_OFF, Y_OFF + W]);
+
+        this.radiusScale.domain([0, max(this.displayItems, r)]);
+
         this.displayItems.forEach(d => {
-          d.target.x = (Math.floor(Math.random() * 10) / 10) * this.props.width;
-          d.target.y = (Math.floor(Math.random() * 5) / 5) * this.props.height;
-          d.target.radius =
-            this.radiusExtent[0] +
-            (this.radiusExtent[1] - this.radiusExtent[0]) * Math.random() ** 10;
+          d.target.x = this.xScale(x(d));
+          d.target.y = this.yScale(y(d));
+          d.target.radius = this.radiusScale(r(d));
         });
+
         break;
-      case 2:
+      case 'time':
+        x = d => Math.sqrt(d.data.time);
+        y = d => Math.random();
+        r = d => d.data.time;
+
+        this.xScale
+          .domain(extent(this.displayItems, x))
+          .range([padding, X_OFF + W]);
+
+        this.yScale
+          .domain(extent(this.displayItems, y))
+          .range([padding, Y_OFF + W]);
+
+        this.radiusScale.domain([0, max(this.displayItems, r)]);
+
         this.displayItems.forEach(d => {
-          d.target.x = this.props.width / 2;
-          d.target.y = this.props.height / 2;
-          d.target.radius = 1;
+          d.target.x = this.xScale(x(d));
+          d.target.y = this.yScale(y(d));
+          d.target.radius = this.radiusScale(r(d));
         });
+
         break;
-      case 3:
+      case 'sweet-sour-vs-meaty-bitter':
+        x = d => d.data.sweet - d.data.sour;
+        y = d => d.data.meaty - d.data.bitter;
+        r = d => d.data.time;
+
+        this.xScale
+          .domain(extent(this.displayItems, x))
+          .range([padding, X_OFF + W]);
+
+        this.yScale
+          .domain(extent(this.displayItems, y))
+          .range([Y_OFF, Y_OFF + W]);
+
+        this.radiusScale.domain([0, max(this.displayItems, r)]);
+
         this.displayItems.forEach(d => {
-          d.target.x = Math.random() * Math.random() * this.props.width;
-          d.target.y = Math.random() * Math.random() * this.props.height;
-          d.target.radius =
-            this.radiusExtent[0] +
-            (this.radiusExtent[1] - this.radiusExtent[0]) * Math.random() ** 10;
+          d.target.x = this.xScale(x(d));
+          d.target.y = this.yScale(y(d));
+          d.target.radius = this.radiusScale(r(d));
         });
-        break;
-      case 4:
-        this.displayItems.forEach(d => {
-          d.target.x = 960;
-          d.target.y = Math.random() * Math.random() * this.props.height;
-          d.target.radius = (5 * d.target.y) / 1080;
-        });
+
         break;
       default:
-        this.layoutCounter = 0;
-        this.refreshLayout();
     }
 
     this.forceX.x(d => d.target.x);
     this.forceY.y(d => d.target.y);
+    this.sim.alpha(1).restart();
   }
 
   componentDidUpdate(prevProps) {
@@ -114,7 +184,9 @@ class DynamicMapContainer extends React.Component {
     this.updateDisplayItems();
     this.initForce();
     autorun(() => this.tick(now('frame')));
-    setInterval(() => this.refreshLayout(), 3000);
+    autorun(() => this.refreshLayout(uiState.mode));
+    this.refreshLayout();
+
     this.setState({ running: true });
   }
 
@@ -129,16 +201,17 @@ class DynamicMapContainer extends React.Component {
     //   .distanceMin(10);
     this.forceX = forceX()
       .x(d => d.target.x)
-      .strength(0.025);
+      .strength(0.2);
     this.forceY = forceY()
       .y(d => d.target.y)
-      .strength(0.025);
+      .strength(0.2);
     this.forceCollide = forceCollide()
-      .radius(n => n.radius + 5)
-      .strength(0.5);
+      .radius(n => n.radius + 3)
+      .strength(0.6);
     this.sim = forceSimulation(this.displayItems)
-      .alphaDecay(0)
-      .velocityDecay(0.5)
+      .alphaDecay(0.005)
+      .alphaMin(0.01)
+      .velocityDecay(0.4)
       // .force('center', fc)
       .force('collide', this.forceCollide)
       // .force('charge', fmb)
@@ -154,7 +227,18 @@ class DynamicMapContainer extends React.Component {
     return (
       <div style={{ display: 'flex' }}>
         <div style={{ position: 'relative' }}>
-          <DynamicMap data={this.displayItems} width={width} height={height} />
+          <DynamicMap
+            data={this.displayItems}
+            width={width}
+            height={height}
+            clickAction={this.clickAction}
+            hoverAction={this.hoverAction}
+          />
+          <DynamicMapLabels
+            data={this.displayItemsWithLabels}
+            width={width}
+            height={height}
+          />
         </div>
       </div>
     );

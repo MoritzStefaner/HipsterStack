@@ -24,7 +24,14 @@ class DynamicMapPixiFiber extends React.Component {
 
   displayItemFor(d) {
     if (!this.displayItems.has(d)) {
-      this.displayItems.set(d, this.createDisplayItem(d));
+      this.displayItems.set(
+        d,
+        this.createDisplayItem(
+          d,
+          this.props.clickAction,
+          this.props.hoverAction,
+        ),
+      );
     }
     return this.displayItems.get(d);
   }
@@ -51,9 +58,10 @@ class DynamicMapPixiFiber extends React.Component {
       autoResize: true,
       width,
       height,
+      interactive: true,
     });
 
-    this.stage && this.stage.app.ticker.add(() => this.tick());
+    // this.stage && this.stage.app.ticker.add(() => this.tick());
     autorun(() => this.tick(now('frame')));
   }
 
@@ -81,11 +89,11 @@ class ItemSprite extends PIXI.Container {
   constructor(vm, clickAction, hoverAction) {
     super();
     this.viewModel = vm;
-    // this.clickAction = clickAction;
-    // this.hoverAction = hoverAction;
+    this.clickAction = clickAction;
+    this.hoverAction = hoverAction;
     this.setUp();
 
-    // this.interactive = true;
+    this.interactive = true;
   }
 
   setUp() {
@@ -102,14 +110,44 @@ class ItemSprite extends PIXI.Container {
     // this.blendMode = PIXI.BLEND_MODES.MULTIPLY;
     // this.addChild(this.trail);
 
-    // this.dot = circleGraphic({
-    //   fill: 0xffffff,
-    //   radius: 1,
-    //   parent: this,
-    // });
-    this.dot = PIXI.Sprite.from(cubeGraphic);
-    this.dot.scale.set(0.1);
-    this.addChild(this.dot);
+    // this.dots = [
+    //   circleGraphic({
+    //     fill: 0xff0000,
+
+    //     radius: this.viewModel.data.sweet,
+    //     parent: this,
+    //     blendMode: PIXI.BLEND_MODES.ADD,
+    //   }),
+    //   circleGraphic({
+    //     fill: 0x0000ff,
+
+    //     radius: this.viewModel.data.sour,
+    //     parent: this,
+    //     blendMode: PIXI.BLEND_MODES.ADD,
+    //   }),
+    //   circleGraphic({
+    //     fill: 0x00ff00,
+    //     radius: this.viewModel.data.meaty,
+    //     parent: this,
+    //     blendMode: PIXI.BLEND_MODES.ADD,
+    //   }),
+    //   circleGraphic({
+    //     fill: 0x00ffff,
+    //     radius: this.viewModel.data.bitter,
+    //     parent: this,
+    //     blendMode: PIXI.BLEND_MODES.ADD,
+    //   }),
+    // ];
+
+    this.dot = circleGraphic({
+      fill: 0xffffff,
+      radius: 1,
+      parent: this,
+    });
+
+    // this.dot = PIXI.Sprite.from(cubeGraphic);
+    // this.dot.scale.set(0.1);
+    // this.addChild(this.dot);
   }
 
   updateAttributes() {
@@ -134,22 +172,24 @@ class ItemSprite extends PIXI.Container {
   //   this.scale.set(Math.sqrt(1/scale));
   // }
 
-  // click(event) {
-  //   event.stopPropagation();
-  //   this.clickAction(this.viewModel.id);
-  // }
+  click(event) {
+    event.stopPropagation();
+    this.clickAction(this.viewModel.id);
+    console.log('CLICK');
+  }
 
-  // mouseover(event){
-  //   event.stopPropagation();
-  //   console.log(this.viewModel.id, this.viewModel.__data);
-  //   this.hoverAction(this.viewModel.legId);
-  //   // uiState.playing = false;
-  // }
+  mouseover(event) {
+    event.stopPropagation();
+    // console.log(this.viewModel.id, this.viewModel.__data);
+    this.hoverAction(this.viewModel.id);
+    console.log('HOVER');
+    // uiState.playing = false;
+  }
 
-  // mouseout(event){
-  //   event.stopPropagation();
-  //   this.hoverAction();
-  //   // uiState.playing = true;
-  // }
+  mouseout(event) {
+    event.stopPropagation();
+    this.hoverAction();
+    // uiState.playing = true;
+  }
 }
 export default DynamicMapPixiFiber;

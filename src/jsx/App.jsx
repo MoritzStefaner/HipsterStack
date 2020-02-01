@@ -24,28 +24,26 @@ class App extends Component {
 
     return (
       <div>
-        {/* <div className="controls">
+        <div className="controls">
           <TabBar
             data={uiState.modes}
             property={uiState.mode}
             onChange={id => {
               uiState.mode = id;
             }}
-          >
-            Mode
-          </TabBar>
-          <Toggle
+          ></TabBar>
+          {/* <Toggle
             selected={uiState.toggleMode}
             onChange={() => {
               uiState.toggleMode = !uiState.toggleMode;
             }}
           >
             toggle
-          </Toggle>
-        </div> */}
+          </Toggle> */}
+        </div>
         {dataAPI.ready ? (
           <div>
-            <DynamicMapContainer data={items} width={1920} height={1080} />
+            <DynamicMapContainer data={items} width={1080} height={1080} />
             {/* <VisComponent data={items} /> */}
             {/* <MouseTip visible>
               {dataAPI.hoveredItem && dataAPI.hoveredItem.id}

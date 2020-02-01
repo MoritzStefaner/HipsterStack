@@ -1,12 +1,10 @@
-import {
-  observable, computed, action, autorun,
-} from 'mobx';
+import { observable, computed, action, autorun } from 'mobx';
 
 class UiState {
-  @observable
-  mode = null;
+  modes = ['similarity', 'sweet-sour-vs-meaty-bitter', 'time'];
 
-  modes = ['mode1', 'mode2'];
+  @observable
+  mode = this.modes[0];
 
   @observable
   toggleMode = false;
